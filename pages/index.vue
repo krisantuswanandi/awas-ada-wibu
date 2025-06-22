@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { useQuery } from "@tanstack/vue-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { gql, GraphQLClient } from "graphql-request";
 
 const auth = useAuth();
+const queryClient = useQueryClient();
 
 onMounted(() => {
   if (!auth.accessToken.value) {
@@ -90,6 +91,39 @@ const orderedLists = computed(() => {
     })
     .filter((list) => list.entries.length > 0);
 });
+
+const mutation = useMutation({
+  mutationFn: async (params) => {
+    return client.request(
+      gql`
+        mutation UpdateMediaListEntries($progress: Int, $ids: [Int]) {
+          UpdateMediaListEntries(progress: $progress, ids: $ids) {
+            progress
+            media {
+              title {
+                english
+              }
+            }
+            score
+            completedAt {
+              year
+              month
+              day
+            }
+            status
+          }
+        }
+      `,
+      {
+        ids: params.ids,
+        progress: params.progress,
+      }
+    );
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["testing"] });
+  },
+});
 </script>
 
 <template>
@@ -107,8 +141,21 @@ const orderedLists = computed(() => {
             />
             <div class="ml-4">
               <div class="font-bold">{{ entry.media.title.english }}</div>
-              <div>Score: {{ entry.score }}</div>
-              <div>{{ entry.progress }} / {{ entry.media.episodes }}</div>
+              <div>⭐ {{ entry.score }}</div>
+              <div class="flex items-center gap-2">
+                {{ entry.progress }} / {{ entry.media.episodes }}
+                <button
+                  @click="
+                    mutation.mutate({
+                      ids: [entry.id],
+                      progress: entry.progress + 1,
+                    })
+                  "
+                  class="px-2 py-1 text-xs bg-blue-500 text-white rounded"
+                >
+                  +1
+                </button>
+              </div>
             </div>
           </li>
         </ul>
