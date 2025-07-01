@@ -4,7 +4,7 @@ const toggleDark = useToggle(isDark);
 </script>
 
 <template>
-  <div class="flex items-center justify-center gap-2">
+  <div class="flex items-center justify-center gap-2 p-4">
     <UButton
       :icon="isDark ? 'i-lucide-moon' : 'i-lucide-sun'"
       variant="ghost"

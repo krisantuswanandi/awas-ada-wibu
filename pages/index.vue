@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
-import { gql, GraphQLClient } from "graphql-request";
-
 const auth = useAuth();
-const queryClient = useQueryClient();
+const { media, loading, updateProgress } = useAnilist();
 
 onMounted(() => {
   if (!auth.accessToken.value) {
@@ -11,79 +8,15 @@ onMounted(() => {
   }
 });
 
-const client = new GraphQLClient("https://graphql.anilist.co", {
-  headers: {
-    Authorization: `Bearer ${auth.accessToken.value}`,
-  },
-});
-
-const { data: user, isLoading: userLoading } = useQuery({
-  queryKey: ["dingdong"],
-  queryFn: async () => {
-    return client.request(
-      gql`
-        query Def {
-          Viewer {
-            id
-          }
-        }
-      `
-    );
-  },
-  retry: false,
-});
-
-const { data: media, isLoading: mediaLoading } = useQuery({
-  queryKey: ["testing"],
-  queryFn: async () => {
-    return client.request(
-      gql`
-        query Abc($id: Int!) {
-          MediaListCollection(userId: $id, type: ANIME) {
-            lists {
-              name
-              entries {
-                id
-                media {
-                  title {
-                    english
-                  }
-                  coverImage {
-                    large
-                  }
-                  episodes
-                }
-                score
-                progress
-              }
-            }
-          }
-          User(id: $id) {
-            mediaListOptions {
-              animeList {
-                sectionOrder
-              }
-            }
-          }
-        }
-      `,
-      {
-        id: user.value?.Viewer.id,
-      }
-    );
-  },
-  retry: false,
-  enabled: computed(() => !!user.value?.Viewer.id),
-});
-
 const orderedLists = computed(() => {
   if (!media.value) return [];
 
-  return media.value.User.mediaListOptions.animeList.sectionOrder
+  const sections = media.value.User.mediaListOptions.animeList.sectionOrder;
+  const lists = media.value.MediaListCollection.lists;
+
+  return sections
     .map((section: string) => {
-      const list = media.value.MediaListCollection.lists.find(
-        (l) => l.name === section
-      );
+      const list = lists.find((l) => l.name === section);
       return {
         name: section,
         entries: list ? list.entries : [],
@@ -92,73 +25,70 @@ const orderedLists = computed(() => {
     .filter((list) => list.entries.length > 0);
 });
 
-const mutation = useMutation({
-  mutationFn: async (params) => {
-    return client.request(
-      gql`
-        mutation UpdateMediaListEntries($progress: Int, $ids: [Int]) {
-          UpdateMediaListEntries(progress: $progress, ids: $ids) {
-            progress
-            media {
-              title {
-                english
-              }
-            }
-            score
-            completedAt {
-              year
-              month
-              day
-            }
-            status
-          }
-        }
-      `,
-      {
-        ids: params.ids,
-        progress: params.progress,
-      }
-    );
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["testing"] });
-  },
-});
+const handleUpdateProgress = (entryId: number, newProgress: number) => {
+  updateProgress({
+    ids: [entryId],
+    progress: newProgress,
+  });
+};
 </script>
 
 <template>
-  <div class="p-4">
-    <div v-if="userLoading || mediaLoading">Loading...</div>
-    <div v-else-if="media" class="space-y-4">
-      <div v-for="list in orderedLists" :key="list.name">
-        <h2 class="font-bold">{{ list.name }}</h2>
-        <ul class="mt-4 space-y-4">
-          <li v-for="entry in list.entries" :key="entry.id" class="flex">
-            <NuxtImg
-              :src="entry.media.coverImage.large"
-              :alt="entry.media.title.english"
-              class="w-20"
+  <div>
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-24">
+      <UIcon name="i-lucide-loader-circle" class="animate-spin w-12" />
+    </div>
+
+    <!-- Content -->
+    <div v-else-if="media">
+      <!-- Empty State -->
+      <div
+        v-if="!media.MediaListCollection.lists.length"
+        class="flex flex-col items-center justify-center gap-2 mt-8"
+      >
+        <UIcon name="i-lucide-film" class="w-12 text-(--ui-text-muted)" />
+        <h3 class="text-lg">No anime found</h3>
+        <p class="text-sm text-(--ui-text-muted)">
+          Start adding anime to your list on AniList to see them here.
+        </p>
+        <UButton
+          to="https://anilist.co"
+          external
+          target="_blank"
+          icon="i-lucide-external-link"
+          label="Visit AniList"
+          class="mt-4"
+        />
+      </div>
+
+      <!-- Anime Lists -->
+      <div v-else class="space-y-8">
+        <div v-for="list in orderedLists" :key="list.name">
+          <!-- Section Header -->
+          <div class="flex items-center gap-2">
+            <h2
+              class="text-lg md:text-xl font-semibold text-gray-900 dark:text-white"
+            >
+              {{ list.name }}
+            </h2>
+            <UBadge
+              :label="list.entries.length.toString()"
+              variant="soft"
+              size="md"
             />
-            <div class="ml-4">
-              <div class="font-bold">{{ entry.media.title.english }}</div>
-              <div>⭐ {{ entry.score }}</div>
-              <div class="flex items-center gap-2">
-                {{ entry.progress }} / {{ entry.media.episodes }}
-                <button
-                  @click="
-                    mutation.mutate({
-                      ids: [entry.id],
-                      progress: entry.progress + 1,
-                    })
-                  "
-                  class="px-2 py-1 text-xs bg-blue-500 text-white rounded"
-                >
-                  +1
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
+          </div>
+
+          <!-- Mobile-first Grid -->
+          <div class="grid grid-cols-6 gap-2 mt-2">
+            <AnimeCard
+              v-for="entry in list.entries"
+              :key="entry.id"
+              :entry="entry"
+              @update-progress="handleUpdateProgress"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>
