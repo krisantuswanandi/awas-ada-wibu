@@ -13,6 +13,7 @@ export default defineNuxtConfig({
     "@vueuse/nuxt",
   ],
   ssr: false,
+  css: ["~/assets/css/main.css"],
   runtimeConfig: {
     public: {
       anilistClientId: "",
