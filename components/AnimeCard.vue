@@ -54,7 +54,13 @@ const handleClick = () => {
       class="absolute inset-0 p-2 bg-gradient-to-b from-transparent to-black flex flex-col justify-end gap-2"
     >
       <h3 class="font-semibold text-sm text-white line-clamp-3">
-        {{ entry.media.title.english }}
+        <NuxtLink
+          :to="`https://anilist.co/anime/${entry.media.id}`"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {{ entry.media.title.english }}
+        </NuxtLink>
       </h3>
 
       <div v-if="entry.progress < maxEpisodes" class="space-y-1">

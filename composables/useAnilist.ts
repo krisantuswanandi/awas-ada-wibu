@@ -12,11 +12,11 @@ export function useAnilist() {
   });
 
   const { data: user, isLoading: userLoading } = useQuery<User>({
-    queryKey: ["dingdong"],
+    queryKey: ["viewer"],
     queryFn: async () => {
       return client.request<User>(
         gql`
-          query Def {
+          query Viewer {
             Viewer {
               id
             }
@@ -28,17 +28,18 @@ export function useAnilist() {
   });
 
   const { data: media, isLoading: mediaLoading } = useQuery<MediaData>({
-    queryKey: ["testing"],
+    queryKey: ["media"],
     queryFn: async () => {
       return client.request<MediaData>(
         gql`
-          query Abc($id: Int!) {
+          query Media($id: Int!) {
             MediaListCollection(userId: $id, type: ANIME) {
               lists {
                 name
                 entries {
                   id
                   media {
+                    id
                     title {
                       english
                     }
@@ -105,7 +106,7 @@ export function useAnilist() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["testing"] });
+      queryClient.invalidateQueries({ queryKey: ["media"] });
     },
   });
 

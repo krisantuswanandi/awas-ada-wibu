@@ -7,6 +7,7 @@ export interface User {
 export interface MediaEntry {
   id: number;
   media: {
+    id: number;
     title: {
       english: string;
     };
