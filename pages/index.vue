@@ -115,13 +115,15 @@ const handleUpdateProgress = (entryId: number, newProgress: number) => {
 
           <!-- Collapsible Content -->
           <template #content>
-            <div class="grid grid-cols-6 gap-2 p-4 pt-0">
-              <AnimeCard
-                v-for="entry in list.entries"
-                :key="entry.id"
-                :entry="entry"
-                @update-progress="handleUpdateProgress"
-              />
+            <div class="@container p-4 pt-0">
+              <div class="grid gap-2 grid-cols-2 @[480px]:grid-cols-3 @[720px]:grid-cols-4 @[960px]:grid-cols-5 @[1200px]:grid-cols-6 @[1440px]:grid-cols-7 @[1680px]:grid-cols-8">
+                <AnimeCard
+                  v-for="entry in list.entries"
+                  :key="entry.id"
+                  :entry="entry"
+                  @update-progress="handleUpdateProgress"
+                />
+              </div>
             </div>
           </template>
         </UCollapsible>
