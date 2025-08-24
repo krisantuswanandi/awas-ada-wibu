@@ -25,6 +25,24 @@ const orderedLists = computed(() => {
     .filter((list) => list.entries.length > 0);
 });
 
+// Section state management with localStorage persistence
+const config = useLocalStorage("aaw_config", { sections: {} } as Record<
+  string,
+  Record<string, boolean>
+>);
+
+const getSectionOpenState = (sectionName: string) => {
+  // If state exists in localStorage, use it; otherwise default "Watching" to true, others to false
+  if (sectionName in config.value.sections) {
+    return config.value.sections[sectionName];
+  }
+  return sectionName === "Watching";
+};
+
+const setSectionOpenState = (sectionName: string, isOpen: boolean) => {
+  config.value.sections[sectionName] = isOpen;
+};
+
 const handleUpdateProgress = (entryId: number, newProgress: number) => {
   updateProgress({
     ids: [entryId],
@@ -63,32 +81,50 @@ const handleUpdateProgress = (entryId: number, newProgress: number) => {
       </div>
 
       <!-- Anime Lists -->
-      <div v-else class="space-y-8">
-        <div v-for="list in orderedLists" :key="list.name">
-          <!-- Section Header -->
-          <div class="flex items-center gap-2">
-            <h2
-              class="text-lg md:text-xl font-semibold text-gray-900 dark:text-white"
-            >
-              {{ list.name }}
-            </h2>
-            <UBadge
-              :label="list.entries.length.toString()"
-              variant="soft"
-              size="md"
-            />
-          </div>
+      <div v-else class="space-y-4">
+        <UCollapsible
+          v-for="list in orderedLists"
+          :key="list.name"
+          :open="getSectionOpenState(list.name)"
+          class="bg-gray-100 rounded-lg"
+          @update:open="(isOpen) => setSectionOpenState(list.name, isOpen)"
+        >
+          <!-- Section Header as Trigger -->
+          <UButton
+            class="p-4 justify-between group"
+            variant="ghost"
+            color="neutral"
+            trailing-icon="i-lucide-chevron-down"
+            :ui="{
+              trailingIcon:
+                'group-data-[state=open]:rotate-180 transition-transform duration-200',
+            }"
+            block
+          >
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ list.name }}
+              </h2>
+              <UBadge
+                :label="list.entries.length.toString()"
+                variant="soft"
+                size="md"
+              />
+            </div>
+          </UButton>
 
-          <!-- Mobile-first Grid -->
-          <div class="grid grid-cols-6 gap-2 mt-2">
-            <AnimeCard
-              v-for="entry in list.entries"
-              :key="entry.id"
-              :entry="entry"
-              @update-progress="handleUpdateProgress"
-            />
-          </div>
-        </div>
+          <!-- Collapsible Content -->
+          <template #content>
+            <div class="grid grid-cols-6 gap-2 p-4 pt-0">
+              <AnimeCard
+                v-for="entry in list.entries"
+                :key="entry.id"
+                :entry="entry"
+                @update-progress="handleUpdateProgress"
+              />
+            </div>
+          </template>
+        </UCollapsible>
       </div>
     </div>
   </div>
